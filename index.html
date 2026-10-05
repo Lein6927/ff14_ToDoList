@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>每日待辦</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <div class="topbar">
+        <div class="brand">
+          <div class="brand-mark">FF14</div>
+          <div>
+            <h1>冒險誌</h1>
+            <p>每日 · 每週待辦追蹤</p>
+          </div>
+        </div>
+        <div class="timers">
+          <div class="timer-chip daily">
+            <span class="dot"></span>
+            <div>
+              <div class="timer-label">距離每日重置</div>
+              <div class="timer-value" id="daily-countdown">--:--:--</div>
+            </div>
+          </div>
+          <div class="timer-chip weekly">
+            <span class="dot"></span>
+            <div>
+              <div class="timer-label">距離每週重置</div>
+              <div class="timer-value" id="weekly-countdown">--:--:--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="daily">日常任務</button>
+        <button class="tab-btn" data-tab="tribes">部族好感度</button>
+        <button class="tab-btn" data-tab="weekly">每週任務</button>
+        <button class="tab-btn" data-tab="memos">備忘錄</button>
+        <button class="tab-btn" data-tab="calendar">活動行事曆</button>
+        <button class="tab-btn" data-tab="links">實用網站</button>
+      </div>
+
+      <div class="panel active" id="panel-daily">
+        <div class="today-events" id="today-events-banner"></div>
+
+        <div class="section-head">
+          <h2>本週任務</h2>
+          <span class="count" id="weekly-count-daily"></span>
+        </div>
+        <div class="card-grid" id="weekly-tasks-daily"></div>
+
+        <div class="section-head">
+          <h2>每日任務</h2>
+          <span class="count" id="daily-count"></span>
+        </div>
+        <div class="card-grid" id="daily-tasks"></div>
+
+        <div class="section-head section-head-spaced">
+          <h2>今日部族任務</h2>
+          <span class="count" id="tribe-today-count"></span>
+        </div>
+
+        <div class="settings-row settings-row-compact settings-row-bottom">
+          <span>目前版本進度</span>
+          <select id="current-version-select-daily"></select>
+        </div>
+        <div class="section-sub" id="tribe-today-hint">
+          點 − / + 記錄今天已經交了幾次
+        </div>
+        <div class="card-grid" id="tribe-today-list"></div>
+
+        <!--備忘錄-->
+        <div class="section-head section-head-spaced">
+          <h2>備忘錄</h2>
+          <span class="count" id="memo-daily-count"></span>
+        </div>
+        <div class="section-sub">依新增日期排序，點標題可展開內文</div>
+        <div id="memo-daily-list"></div>
+
+        <div class="settings-row">
+          <span>每日重置時間：<span id="daily-reset-hour-label"></span></span>
+          <button class="reset-btn-sm" id="manual-daily-reset">
+            手動重置今日勾選
+          </button>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-tribes">
+        <div class="section-head">
+          <h2>友好部族好感度</h2>
+          <span class="count" id="tribe-count"></span>
+        </div>
+        <div class="section-sub">
+          綠色勾選 = 今天已做部族任務（每日重置）；好感度用 + / -
+          記錄等級，可加註目前差幾點
+        </div>
+        <div
+          class="settings-row settings-row-compact settings-row-bottom-large"
+        >
+          <span>目前版本進度</span>
+          <select id="current-version-select"></select>
+        </div>
+        <div class="version-pills" id="tribe-version-pills"></div>
+        <div id="tribe-blocks"></div>
+      </div>
+
+      <div class="panel" id="panel-weekly">
+        <div class="section-head">
+          <h2>每週任務</h2>
+          <span class="count" id="weekly-count"></span>
+        </div>
+        <div class="card-grid" id="weekly-tasks"></div>
+        <div class="settings-row">
+          <span>每週重置日</span>
+          <select id="weekly-reset-day"></select>
+          <span>重置時間</span>
+          <select id="weekly-reset-hour"></select>
+          <button class="reset-btn-sm" id="manual-weekly-reset">
+            手動重置本週勾選
+          </button>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-memos">
+        <div class="section-head">
+          <h2>備忘錄</h2>
+          <span class="count" id="memo-count"></span>
+        </div>
+        <div class="section-sub">標題，例如：打XX支線任務</div>
+
+        <div class="memo-form-row">
+          <input type="date" id="memo-date" />
+          <input
+            type="text"
+            id="memo-title"
+            placeholder="標題，例如：打XX支線任務"
+          />
+        </div>
+        <div class="memo-form-row memo-form-row-bottom">
+          <textarea
+            id="memo-content"
+            class="memo-content-input"
+            rows="2"
+            placeholder="內文，例如:去哪裡接取"
+          ></textarea>
+          <button id="memo-add-btn">新增</button>
+        </div>
+        <div class="memo-list" id="memo-list"></div>
+
+        <!-- <div class="memo-filter" id="memo-filter"></div>
+        <div class="memo-list" id="memo-list"></div> -->
+      </div>
+
+      <div class="panel" id="panel-calendar">
+        <div class="cal-header">
+          <div class="cal-nav">
+            <button class="cal-nav-btn" id="cal-prev" aria-label="上個月">
+              ‹
+            </button>
+            <div class="cal-title" id="cal-title"></div>
+            <button class="cal-nav-btn" id="cal-next" aria-label="下個月">
+              ›
+            </button>
+          </div>
+          <button class="cal-today-btn" id="cal-today">回到今天</button>
+        </div>
+        <div class="cal-grid" id="cal-dow-row"></div>
+        <div class="cal-grid" id="cal-grid"></div>
+        <div class="cal-detail">
+          <div class="cal-detail-head" id="cal-detail-date"></div>
+          <div id="cal-event-list"></div>
+          <div class="cal-event-add">
+            <input
+              type="text"
+              id="cal-ev-title"
+              placeholder="活動名稱，例如：挖寶"
+            />
+            <input type="date" id="cal-ev-end" />
+            <input type="text" id="cal-ev-note" placeholder="備註（選填）" />
+            <div class="cal-color-picker" id="cal-color-picker"></div>
+            <!--顏色選擇器-->
+            <button id="cal-ev-add-btn">加入</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-links">
+        <div class="section-head">
+          <h2>實用網站</h2>
+          <span class="count" id="links-count"></span>
+        </div>
+        <div class="section-sub">收藏常用的攻略、工具、外部連結</div>
+        <div class="memo-toolbar">
+          <input
+            type="text"
+            id="link-name"
+            placeholder="網站名稱，例如：巴哈姆特 FF14 板"
+          />
+          <input
+            type="text"
+            id="link-url"
+            placeholder="網址，例如：https://..."
+          />
+          <button id="link-add-btn">新增</button>
+        </div>
+        <div class="memo-list" id="link-list"></div>
+      </div>
+
+      <!-- <div class="websites-grid" id="websites-grid"></div> -->
+    </div>
+    <!--要先載入活動資訊-->
+    <script src="events.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
