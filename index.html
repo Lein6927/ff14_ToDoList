@@ -17,6 +17,21 @@
           </div>
         </div>
         <div class="timers">
+          <div class="timer-chip real">
+            <span class="dot"></span>
+            <div>
+              <div class="timer-label">現實時間：</div>
+              <div class="timer-value" id="realTime"></div>
+            </div>
+          </div>
+          <div class="timer-chip et">
+            <span class="dot"></span>
+            <div>
+              <div class="timer-label">艾歐澤亞時間：</div>
+              <div class="timer-value" id="etTime"></div>
+            </div>
+          </div>
+
           <div class="timer-chip daily">
             <span class="dot"></span>
             <div>
@@ -41,6 +56,9 @@
         <button class="tab-btn" data-tab="memos">備忘錄</button>
         <button class="tab-btn" data-tab="calendar">活動行事曆</button>
         <button class="tab-btn" data-tab="links">實用網站</button>
+        <button class="tab-btn" data-tab="locations-choice">
+          任務地點優化(beta)
+        </button>
       </div>
 
       <div class="panel active" id="panel-daily">
@@ -85,6 +103,17 @@
           <button class="reset-btn-sm" id="manual-daily-reset">
             手動重置今日勾選
           </button>
+        </div>
+        <div class="settings-row">
+          <span>資料備份</span>
+          <button class="reset-btn-sm" id="export-data-btn">匯出備份</button>
+          <button class="reset-btn-sm" id="import-data-btn">匯入備份</button>
+          <input
+            type="file"
+            id="import-data-input"
+            accept="application/json"
+            style="display: none"
+          />
         </div>
       </div>
 
@@ -172,16 +201,24 @@
         <div class="cal-detail">
           <div class="cal-detail-head" id="cal-detail-date"></div>
           <div id="cal-event-list"></div>
+          <div class="cal-event-add-title">
+            新增活動（開始日＝你在月曆上點的那天）
+          </div>
+
           <div class="cal-event-add">
+            <div class="cal-color-picker" id="cal-color-picker"></div>
+            <input type="date" id="cal-ev-end" />
+            <select id="cal-ev-type">
+              <option value="挖寶">挖寶</option>
+              <option value="副本">副本</option>
+              <option value="其他" selected>其他</option>
+            </select>
             <input
               type="text"
               id="cal-ev-title"
-              placeholder="活動名稱，例如：挖寶"
+              placeholder="活動名稱，例如：週年慶登入禮"
             />
-            <input type="date" id="cal-ev-end" />
             <input type="text" id="cal-ev-note" placeholder="備註（選填）" />
-            <div class="cal-color-picker" id="cal-color-picker"></div>
-            <!--顏色選擇器-->
             <button id="cal-ev-add-btn">加入</button>
           </div>
         </div>
@@ -209,6 +246,13 @@
         <div class="memo-list" id="link-list"></div>
       </div>
 
+      <div class="panel" id="panel-locations-choice">
+        <div class="section-head">
+          <h2>任務地點優化(beta)</h2>
+          <span class="count" id="locations-choice-count"></span>
+        </div>
+        <div class="section-sub">依照地圖位置，優化每日任務的完成順序</div>
+      </div>
       <!-- <div class="websites-grid" id="websites-grid"></div> -->
     </div>
     <!--要先載入活動資訊-->

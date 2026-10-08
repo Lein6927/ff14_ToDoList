@@ -9,6 +9,7 @@
   --border-soft: #232b3c;
   --gold: #d4af37;
   --gold-dim: #8a7326;
+  --gold-light: #f0e6b2;
   --jade: #4fd1ae;
   --jade-dim: #2a6b58;
   --crimson: #e2555a;
@@ -110,6 +111,14 @@ button {
   border-radius: 50%;
   flex-shrink: 0;
 }
+/*現實時間的標記顏色*/
+.timer-chip.real .dot {
+  background: var(--gold);
+}
+.timer-chip.et .dot {
+  background: var(--gold-light);
+}
+
 .timer-chip.daily .dot {
   background: var(--jade);
 }
@@ -888,6 +897,44 @@ button {
 .cal-color-swatch.selected {
   border-color: var(--text-0);
 }
+.cal-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.cal-edit-color-row {
+  display: flex;
+  gap: 6px;
+}
+.cal-edit-form input,
+.cal-edit-form select,
+.cal-edit-form textarea {
+  background: var(--bg-1);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-0);
+  padding: 7px 10px;
+  font-size: 12.5px;
+  outline: none;
+  font-family: var(--font-body);
+}
+.cal-edit-form textarea {
+  resize: vertical;
+}
+.cal-edit-save {
+  align-self: flex-end;
+}
+.cal-event-type-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gold);
+  background: var(--bg-3);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-bottom: 3px;
+}
 
 .cal-detail {
   background: var(--bg-1);
@@ -936,13 +983,24 @@ button {
   margin-top: 2px;
   white-space: pre-wrap; /*保留換行*/
 }
+.cal-event-add-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--gold);
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
 .cal-event-add {
   display: flex;
   gap: 8px;
-  margin-top: 6px;
+  margin-bottom: 6px;
   flex-wrap: wrap;
+  border: 1.5px solid var(--gold-dim);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--bg-2);
 }
-.cal-event-add input {
+/* .cal-event-add input {
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -950,7 +1008,23 @@ button {
   padding: 6px 9px;
   font-size: 12.5px;
   outline: none;
+} */
+
+.cal-event-add input,
+.cal-event-add select {
+  background: var(--bg-1);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-0);
+  padding: 7px 10px;
+  font-size: 12.5px;
+  outline: none;
 }
+.cal-event-add input:focus,
+.cal-event-add select:focus {
+  border-color: var(--gold);
+}
+
 .cal-event-add input::placeholder {
   color: var(--text-2);
 }

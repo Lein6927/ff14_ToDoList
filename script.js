@@ -862,6 +862,56 @@ function escapeHtml(s) {
       })[c],
   );
 }
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `quest-tracker-backup-${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed || typeof parsed !== "object") throw new Error("格式不正確");
+      if (
+        !confirmDelete(
+          "匯入後會覆蓋目前所有資料，確定要繼續嗎？這個動作無法復原。",
+        )
+      )
+        return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      location.reload();
+    } catch (e) {
+      alert("匯入失敗，檔案格式不正確。");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function setupBackup() {
+  document
+    .getElementById("export-data-btn")
+    .addEventListener("click", exportData);
+  const fileInp = document.getElementById("import-data-input");
+  document
+    .getElementById("import-data-btn")
+    .addEventListener("click", () => fileInp.click());
+  fileInp.addEventListener("change", () => {
+    if (fileInp.files && fileInp.files[0]) {
+      importData(fileInp.files[0]);
+    }
+    fileInp.value = "";
+  });
+}
 //確認是否刪除-對話框
 function confirmDelete(message) {
   return window.confirm(message || "確定要刪除嗎？這個動作無法復原。");
@@ -894,8 +944,20 @@ function eventLinkHtml(ev) {
   }
   return escapeHtml(ev.title);
 }
+
 let calViewYear, calViewMonth, calSelectedDate;
 let calSelectedColor = EVENT_COLORS[0]; //預設顏色
+let calEventEditing = {}; // 記錄哪些活動目前在編輯模式
+const EVENT_TYPES = ["挖寶", "副本", "其他"];
+
+//行事曆顏色選擇器的顏色格子 HTML
+function colorSwatchesInlineHtml(selectedColor, swatchClass) {
+  return EVENT_COLORS.map(
+    (c) =>
+      `<div class="cal-color-swatch ${swatchClass}${c === selectedColor ? " selected" : ""}" data-color="${c}" style="background:${c}"></div>`,
+  ).join("");
+}
+
 //行事曆顏色選擇器
 function renderColorPicker() {
   const wrap = document.getElementById("cal-color-picker");
@@ -991,21 +1053,93 @@ function renderCalendar() {
     list.innerHTML = `<div class="empty-hint" style="padding:14px;font-size:12px;">這天還沒有安排活動</div>`;
   } else {
     list.innerHTML = "";
+    // dayEvents.forEach((ev) => {
+    //   const row = document.createElement("div");
+    //   row.className = "cal-event-row";
+    //   const delHtml = ev.official
+    //     ? `<span style="font-size:10px;color:var(--text-2);flex-shrink:0;">官方</span>`
+    //     : `<button class="icon-btn del-ev" aria-label="刪除">✕</button>`;
+    //   row.innerHTML = `<span class="dot" style="background:${ev.color || EVENT_COLORS[0]}"></span><div class="cal-event-body"><div class="cal-event-title">${eventLinkHtml(ev)}</div>${ev.note ? `<div class="cal-event-note">${escapeHtml(ev.note)}</div>` : ""}</div>${delHtml}`;
+    //   if (!ev.official) {
+    //     row.querySelector(".del-ev").addEventListener("click", () => {
+    //       if (!confirmDelete(`確定要刪除「${ev.title}」這個活動嗎？`)) return;
+    //       state.events = state.events.filter((x) => x.id !== ev.id);
+    //       scheduleSave();
+    //       renderCalendar();
+    //       renderTodayBanner();
+    //     });
+    //   }
+    //   list.appendChild(row);
+    // });
+    // 改成可編輯模式
     dayEvents.forEach((ev) => {
       const row = document.createElement("div");
       row.className = "cal-event-row";
-      const delHtml = ev.official
-        ? `<span style="font-size:10px;color:var(--text-2);flex-shrink:0;">官方</span>`
-        : `<button class="icon-btn del-ev" aria-label="刪除">✕</button>`;
-      row.innerHTML = `<span class="dot" style="background:${ev.color || EVENT_COLORS[0]}"></span><div class="cal-event-body"><div class="cal-event-title">${eventLinkHtml(ev)}</div>${ev.note ? `<div class="cal-event-note">${escapeHtml(ev.note)}</div>` : ""}</div>${delHtml}`;
-      if (!ev.official) {
-        row.querySelector(".del-ev").addEventListener("click", () => {
-          if (!confirmDelete(`確定要刪除「${ev.title}」這個活動嗎？`)) return;
-          state.events = state.events.filter((x) => x.id !== ev.id);
+      const editing = !ev.official && !!calEventEditing[ev.id];
+
+      if (editing) {
+        row.innerHTML = `
+          <div class="cal-edit-form">
+            <div class="cal-edit-color-row">${colorSwatchesInlineHtml(ev.color || EVENT_COLORS[0], "cal-edit-color")}</div>
+            <input type="date" class="cal-edit-end" value="${escapeAttr(ev.endDate || ev.date)}" />
+            <select class="cal-edit-type">
+              ${EVENT_TYPES.map((t) => `<option value="${t}" ${t === (ev.type || "其他") ? "selected" : ""}>${t}</option>`).join("")}
+            </select>
+            <input type="text" class="cal-edit-title" value="${escapeAttr(ev.title)}" placeholder="活動名稱" />
+            <textarea class="cal-edit-note" rows="2" placeholder="備註（選填）">${escapeHtml(ev.note || "")}</textarea>
+            <button class="reset-btn-sm cal-edit-save">完成</button>
+          </div>
+        `;
+        row.querySelectorAll(".cal-edit-color").forEach((sw) => {
+          sw.addEventListener("click", () => {
+            ev.color = sw.dataset.color;
+            scheduleSave();
+            renderCalendar();
+          });
+        });
+        row.querySelector(".cal-edit-end").addEventListener("input", (e) => {
+          ev.endDate = e.target.value;
           scheduleSave();
+        });
+        row.querySelector(".cal-edit-type").addEventListener("change", (e) => {
+          ev.type = e.target.value;
+          scheduleSave();
+        });
+        row.querySelector(".cal-edit-title").addEventListener("input", (e) => {
+          ev.title = e.target.value;
+          scheduleSave();
+        });
+        row.querySelector(".cal-edit-note").addEventListener("input", (e) => {
+          ev.note = e.target.value;
+          scheduleSave();
+        });
+        row.querySelector(".cal-edit-save").addEventListener("click", () => {
+          calEventEditing[ev.id] = false;
           renderCalendar();
           renderTodayBanner();
         });
+      } else {
+        const typeTag = ev.type
+          ? `<span class="cal-event-type-tag">${escapeHtml(ev.type)}</span>`
+          : "";
+        const actionsHtml = ev.official
+          ? `<span style="font-size:10px;color:var(--text-2);flex-shrink:0;">官方</span>`
+          : `<button class="reset-btn-sm cal-edit-btn">編輯</button><button class="icon-btn del-ev" aria-label="刪除">✕</button>`;
+        row.innerHTML = `<span class="dot" style="background:${ev.color || EVENT_COLORS[0]}"></span><div class="cal-event-body">${typeTag}<div class="cal-event-title">${eventLinkHtml(ev)}</div>${ev.note ? `<div class="cal-event-note">${escapeHtml(ev.note)}</div>` : ""}</div>${actionsHtml}`;
+        if (!ev.official) {
+          row.querySelector(".cal-edit-btn").addEventListener("click", () => {
+            calEventEditing[ev.id] = true;
+            renderCalendar();
+          });
+          row.querySelector(".del-ev").addEventListener("click", () => {
+            if (!confirmDelete(`確定要刪除「${ev.title}」這個活動嗎？`)) return;
+            state.events = state.events.filter((x) => x.id !== ev.id);
+            delete calEventEditing[ev.id];
+            scheduleSave();
+            renderCalendar();
+            renderTodayBanner();
+          });
+        }
       }
       list.appendChild(row);
     });
@@ -1042,9 +1176,11 @@ function setupCalendar() {
     renderCalendar();
   });
 
+  //新增活動表單
   const titleInp = document.getElementById("cal-ev-title");
   const noteInp = document.getElementById("cal-ev-note");
   const endInp = document.getElementById("cal-ev-end");
+  const typeInp = document.getElementById("cal-ev-type");
   renderColorPicker();
   document.getElementById("cal-ev-add-btn").addEventListener("click", () => {
     const title = titleInp.value.trim();
@@ -1057,7 +1193,9 @@ function setupCalendar() {
       title,
       note: noteInp.value.trim(),
       color: calSelectedColor,
+      type: typeInp.value,
     });
+
     titleInp.value = "";
     noteInp.value = "";
     endInp.value = "";
@@ -1318,6 +1456,24 @@ function updateCountdowns() {
     nw - now,
   );
 }
+//更新時間-現實+艾奧
+function updateTime() {
+  const now = new Date();
+
+  // 現實時間
+  document.getElementById("realTime").textContent = now.toLocaleTimeString();
+
+  // FF14 ET時間
+  const etTimestamp = now.getTime() * 20.571428571428573;
+
+  const etDate = new Date(etTimestamp);
+
+  const hh = String(etDate.getUTCHours()).padStart(2, "0");
+  const mm = String(etDate.getUTCMinutes()).padStart(2, "0");
+  const ss = String(etDate.getUTCSeconds()).padStart(2, "0");
+
+  document.getElementById("etTime").textContent = `${hh}:${mm}:${ss}`;
+}
 
 (async function init() {
   await loadState();
@@ -1325,12 +1481,18 @@ function updateCountdowns() {
   checkResets();
   setupTabs();
   setupSettings();
+  updateTime();
+
   setupMemoAdd();
   setupLinkAdd();
+  setupBackup();
   setupVersionProgress();
   setupTribeFilter();
   renderAll();
   updateCountdowns();
+  setInterval(updateTime, 1000);
   setInterval(updateCountdowns, 1000);
   setInterval(checkResets, 30000);
 })();
+
+console.log(document.querySelector(".timer-chip.et"));
