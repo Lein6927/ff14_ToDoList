@@ -1119,9 +1119,11 @@ function renderCalendar() {
           renderTodayBanner();
         });
       } else {
-        const typeTag = ev.type
-          ? `<span class="cal-event-type-tag">${escapeHtml(ev.type)}</span>`
-          : "";
+        const typeTag =
+          ev.type && ev.type !== ev.title
+            ? `<span class="cal-event-type-tag">${escapeHtml(ev.type)}</span>`
+            : "";
+
         const actionsHtml = ev.official
           ? `<span style="font-size:10px;color:var(--text-2);flex-shrink:0;">官方</span>`
           : `<button class="reset-btn-sm cal-edit-btn">編輯</button><button class="icon-btn del-ev" aria-label="刪除">✕</button>`;
@@ -1182,9 +1184,20 @@ function setupCalendar() {
   const endInp = document.getElementById("cal-ev-end");
   const typeInp = document.getElementById("cal-ev-type");
   renderColorPicker();
+
+  // 只有選「其他」才顯示標題輸入框
+  function syncTitleVisibility() {
+    titleInp.hidden = typeInp.value !== "其他";
+  }
+  typeInp.addEventListener("change", syncTitleVisibility);
+  syncTitleVisibility();
+
   document.getElementById("cal-ev-add-btn").addEventListener("click", () => {
-    const title = titleInp.value.trim();
+    const type = typeInp.value;
+    // 挖寶、副本：標題直接用類型名稱；其他：用使用者輸入的標題
+    const title = type === "其他" ? titleInp.value.trim() : type;
     if (!title) return;
+
     const endDate = endInp.value || calSelectedDate;
     state.events.push({
       id: uid(),

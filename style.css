@@ -1020,6 +1020,10 @@ button {
   font-size: 12.5px;
   outline: none;
 }
+.cal-event-add [hidden] {
+  display: none;
+}
+
 .cal-event-add input:focus,
 .cal-event-add select:focus {
   border-color: var(--gold);
@@ -1092,6 +1096,14 @@ button {
 .reset-btn-sm:hover {
   border-color: var(--crimson-dim);
   color: var(--crimson);
+}
+
+/* input[type="date"] {
+  color-scheme: dark;
+} */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
 }
 
 @media (max-width: 640px) {
