@@ -37,11 +37,11 @@ const TRIBE_LEVEL_POINTS = [null, 150, 360, 510, 720, 990, 1320, null];
 //部族每日任務額度表（版本 => 等級 => 每日額度）這裡只列出2版
 const TRIBE_QUOTA_TABLE = {
   2: [3, 6, 9, 12, 12, 12, 12, 12],
-  3: [3, 3, 3, 3, 3, 6, 6, 6],
-  4: [3, 3, 3, 3, 3, 6, 6, 6],
-  5: [3, 3, 3, 3, 3, 6, 6, 6],
-  6: [3, 3, 3, 3, 3, 6, 6, 6],
-  7: [3, 3, 3, 3, 3, 6, 6, 6],
+  3: [3, 3, 3, 3, 3, 3, 3, 3],
+  4: [3, 3, 3, 3, 3, 3, 3, 3],
+  5: [3, 3, 3, 3, 3, 3, 3, 3],
+  6: [3, 3, 3, 3, 3, 3, 3, 3],
+  7: [3, 3, 3, 3, 3, 3, 3, 3],
 };
 function quotaForLevel(version, levelIndex) {
   const table = TRIBE_QUOTA_TABLE[version];
@@ -66,6 +66,8 @@ const WEEKLY_TASK_NAMES = [
   "軍團任務",
   "高難幻本",
   "老主顧",
+  "仙人彩",
+  "青魔嘉年華",
 ];
 //更改每日任務
 const DAILY_TASK_NAMES = [
@@ -76,6 +78,7 @@ const DAILY_TASK_NAMES = [
   "大型",
   "團隊",
   "PVP",
+  "仙人微彩",
 ];
 
 function defaultState() {
@@ -177,8 +180,14 @@ function syncTribeNames() {
 }
 //同步每週任務名稱
 function syncWeeklyTaskNames() {
-  state.weeklyTasks.forEach((t, i) => {
-    if (WEEKLY_TASK_NAMES[i]) t.name = WEEKLY_TASK_NAMES[i];
+  // 用名字比對，保留原本的勾選狀態，新加的項目補進去
+  const existingByName = {};
+  state.weeklyTasks.forEach((t) => {
+    existingByName[t.name] = t;
+  });
+  state.weeklyTasks = WEEKLY_TASK_NAMES.map((name) => {
+    if (existingByName[name]) return existingByName[name];
+    return { id: uid(), name, done: false };
   });
 }
 

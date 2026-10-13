@@ -65,4 +65,16 @@ const OFFICIAL_EVENTS = [
     textColor: "#ffffff",
     official: true,
   },
+
+  {
+    id: "off-1",
+    date: "2026-10-20",
+    endDate: "2026-11-17",
+    title: "莫古★大收集～奇譚探究者",
+    url: "https://event.ffxiv.com.tw/2026/mogmog-collection_allegory/",
+    note: "第3屆莫古",
+    color: "#F8F3DF",
+    textColor: "#935120",
+    official: true,
+  },
 ];
