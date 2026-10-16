@@ -829,7 +829,34 @@ function renderMemoDailyReminder() {
 }
 
 //實用網站清單
+let linkEditing = {}; // id -> 是否在編輯模式
+let dragLinkId = null; // 目前正在拖曳的網站 id
 function renderLinks() {
+  // const list = document.getElementById("link-list");
+  // if (!list) return;
+  // list.innerHTML = "";
+  // if (state.links.length === 0) {
+  //   list.innerHTML = `<div class="empty-hint">還沒有收藏的網站，新增一筆開始收藏</div>`;
+  // } else {
+  //   state.links.forEach((l) => {
+  //     const row = document.createElement("div");
+  //     row.className = "memo-row-wrap";
+  //     row.innerHTML = `
+  //       <div class="memo-row">
+  //         <a href="${escapeAttr(l.url)}" target="_blank" rel="noopener" class="memo-text" style="color:var(--text-0);text-decoration:none;">${escapeHtml(l.name)}</a>
+  //         <button class="icon-btn del-link" aria-label="刪除">✕</button>
+  //       </div>
+  //     `;
+  //     row.querySelector(".del-link").addEventListener("click", () => {
+  //       if (!confirmDelete(`確定要刪除「${l.name}」這個網站嗎？`)) return;
+  //       state.links = state.links.filter((x) => x.id !== l.id);
+  //       scheduleSave();
+  //       renderLinks();
+  //     });
+  //     list.appendChild(row);
+  //   });
+  // }
+
   const list = document.getElementById("link-list");
   if (!list) return;
   list.innerHTML = "";
@@ -837,23 +864,88 @@ function renderLinks() {
     list.innerHTML = `<div class="empty-hint">還沒有收藏的網站，新增一筆開始收藏</div>`;
   } else {
     state.links.forEach((l) => {
+      const editing = !!linkEditing[l.id];
       const row = document.createElement("div");
       row.className = "memo-row-wrap";
+      row.draggable = !editing; // 編輯中不能拖曳，不然輸入框裡沒辦法選取文字
+
+      const mainHtml = editing
+        ? `<input class="link-edit-input link-edit-name" value="${escapeAttr(l.name)}" placeholder="網站名稱" />
+           <input class="link-edit-input link-edit-url" value="${escapeAttr(l.url)}" placeholder="網址" />`
+        : `<a href="${escapeAttr(l.url)}" target="_blank" rel="noopener" draggable="false" class="memo-text" style="color:var(--text-0);text-decoration:none;">${escapeHtml(l.name)}</a>`;
+
       row.innerHTML = `
         <div class="memo-row">
-          <a href="${escapeAttr(l.url)}" target="_blank" rel="noopener" class="memo-text" style="color:var(--text-0);text-decoration:none;">${escapeHtml(l.name)}</a>
+          ${mainHtml}
+          <button class="reset-btn-sm link-edit-btn">${editing ? "完成" : "編輯"}</button>
           <button class="icon-btn del-link" aria-label="刪除">✕</button>
         </div>
       `;
+
+      row.querySelector(".link-edit-btn").addEventListener("click", () => {
+        if (editing) {
+          // 按完成時，補上 https:// 並避免名稱變空白
+          if (l.url && !/^https?:\/\//i.test(l.url)) l.url = "https://" + l.url;
+          if (!l.name.trim()) l.name = l.url;
+          linkEditing[l.id] = false;
+          scheduleSave();
+        } else {
+          linkEditing[l.id] = true;
+        }
+        renderLinks();
+      });
+
+      if (editing) {
+        const nameInp = row.querySelector(".link-edit-name");
+        nameInp.addEventListener("input", () => {
+          l.name = nameInp.value;
+          scheduleSave();
+        });
+        const urlInp = row.querySelector(".link-edit-url");
+        urlInp.addEventListener("input", () => {
+          l.url = urlInp.value.trim();
+          scheduleSave();
+        });
+      }
+
       row.querySelector(".del-link").addEventListener("click", () => {
         if (!confirmDelete(`確定要刪除「${l.name}」這個網站嗎？`)) return;
         state.links = state.links.filter((x) => x.id !== l.id);
+        delete linkEditing[l.id];
         scheduleSave();
         renderLinks();
       });
+
+      // 拖曳排序
+      row.addEventListener("dragstart", (e) => {
+        dragLinkId = l.id;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", l.id); // Firefox 要有這行才會開始拖曳
+        row.classList.add("dragging");
+      });
+      row.addEventListener("dragend", () => {
+        dragLinkId = null;
+        row.classList.remove("dragging");
+      });
+      row.addEventListener("dragover", (e) => {
+        e.preventDefault();
+      });
+      row.addEventListener("drop", (e) => {
+        e.preventDefault();
+        if (!dragLinkId || dragLinkId === l.id) return;
+        const fromIdx = state.links.findIndex((x) => x.id === dragLinkId);
+        const toIdx = state.links.findIndex((x) => x.id === l.id);
+        if (fromIdx === -1 || toIdx === -1) return;
+        const [moved] = state.links.splice(fromIdx, 1);
+        state.links.splice(toIdx, 0, moved);
+        scheduleSave();
+        renderLinks();
+      });
+
       list.appendChild(row);
     });
   }
+
   const countEl = document.getElementById("links-count");
   if (countEl) countEl.textContent = `${state.links.length} 筆`;
 }
