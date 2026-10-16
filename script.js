@@ -1111,6 +1111,7 @@ function renderCalendar() {
     cells.push({ key: dateKey(ny, nm, i), dnum: i, other: true });
   }
 
+  // 生成每個日期格子
   cells.forEach((c) => {
     const evs = getAllEvents().filter((e) => isEventOnDay(e, c.key));
     const maxShow = 3;
@@ -1118,8 +1119,9 @@ function renderCalendar() {
       .slice(0, maxShow)
       .map(
         (e) =>
-          `<div class="cal-event-bar" style="background:${e.color || EVENT_COLORS[0]};color:${e.textColor || "#2d2a37"}">${escapeHtml(e.title)}</div>`,
+          `<div class="cal-event-bar" style="background:${e.color || EVENT_COLORS[0]};color:${e.textColor || "#FFF"}">${escapeHtml(e.title)}</div>`,
       )
+      //.map 裡的e.textColor || "#FFF" 2026/10/16 更改從黑字換白字試試
       .join("");
     const more =
       evs.length > maxShow
