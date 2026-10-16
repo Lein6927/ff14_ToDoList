@@ -77,4 +77,15 @@ const OFFICIAL_EVENTS = [
     textColor: "#935120",
     official: true,
   },
+  {
+    id: "off-1",
+    date: "2026-10-23",
+    endDate: "2026-11-09",
+    title: "守護天節",
+    url: "https://event.ffxiv.com.tw/2026/all_saints_wake/",
+    note: "可領「夜魔套裝」",
+    color: "#517c55",
+    textColor: "#ffffff",
+    official: true,
+  },
 ];
