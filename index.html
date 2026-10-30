@@ -245,18 +245,48 @@
         </div>
         <div class="memo-list" id="link-list"></div>
       </div>
-
+      <!-- panel-地點優化頁面 -->
       <div class="panel" id="panel-locations-choice">
         <div class="section-head">
           <h2>任務地點優化(beta)</h2>
           <span class="count" id="locations-choice-count"></span>
         </div>
-        <div class="section-sub">依照地圖位置，優化每日任務的完成順序</div>
+
+        <div class="section-sub">
+          <p>依照地圖位置，優化地點的路線。</p>
+          請先選目前的版本進度，再選目標地點接著輸入您要做的事情。按「優化地點」將會把同一個地點的事情集中在一起。
+        </div>
+        <div class="settings-row settings-row-compact settings-row-bottom">
+          <span>目前版本進度</span>
+          <select id="plan-version"></select>
+        </div>
+
+        <div class="plan-form">
+          <select id="plan-city"></select>
+          <select id="plan-place"></select>
+          <select id="plan-type"></select>
+          <input
+            type="text"
+            id="plan-desc"
+            placeholder="內容，例如：A職業 Lv50 任務"
+          />
+          <button id="plan-add-btn">加入</button>
+        </div>
+
+        <div class="plan-actions">
+          <button class="plan-optimize-btn" id="plan-optimize-btn">
+            優化地點
+          </button>
+        </div>
+        <div id="plan-list"></div>
       </div>
+      <!-- panel-locations-choice -->
+
       <!-- <div class="websites-grid" id="websites-grid"></div> -->
     </div>
     <!--要先載入活動資訊-->
     <script src="events.js"></script>
+    <script src="location.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

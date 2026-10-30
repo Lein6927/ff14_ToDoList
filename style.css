@@ -1105,6 +1105,114 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
   cursor: pointer;
 }
+/*地點優化相關的css*/
+.plan-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  border: 1.5px solid var(--gold-dim);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--bg-2);
+  margin-bottom: 12px;
+}
+.plan-form input,
+.plan-form select {
+  background: var(--bg-1);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-0);
+  padding: 7px 10px;
+  font-size: 12.5px;
+  outline: none;
+  font-family: var(--font-body);
+}
+.plan-form input:focus,
+.plan-form select:focus {
+  border-color: var(--gold);
+}
+.plan-form input::placeholder {
+  color: var(--text-2);
+}
+#plan-desc {
+  flex: 1;
+  min-width: 180px;
+}
+.plan-form button,
+.plan-optimize-btn {
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-dim);
+  border-radius: 6px;
+  color: #0d1117;
+  padding: 7px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.plan-form button:hover,
+.plan-optimize-btn:hover {
+  background: var(--gold);
+}
+.plan-actions {
+  margin-bottom: 20px;
+}
+.plan-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.plan-cat-tag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--gold);
+  background: var(--bg-3);
+  border-radius: 5px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+.plan-loc-tag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--jade);
+  background: var(--bg-3);
+  border-radius: 5px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+.plan-group .memo-row.done .chk {
+  background: var(--jade);
+  border-color: var(--jade);
+  color: #0d1117;
+}
+.plan-group .memo-row.done .chk svg {
+  display: block;
+}
+/*地點優化編輯*/
+.plan-edit-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+}
+.plan-edit-form input,
+.plan-edit-form select {
+  background: var(--bg-1);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-0);
+  padding: 7px 10px;
+  font-size: 12.5px;
+  outline: none;
+  font-family: var(--font-body);
+}
+.plan-edit-form input:focus,
+.plan-edit-form select:focus {
+  border-color: var(--gold);
+}
+.plan-edit-text {
+  flex: 1;
+  min-width: 160px;
+}
 
 @media (max-width: 640px) {
   .topbar {

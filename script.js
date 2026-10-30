@@ -157,6 +157,7 @@ async function loadState() {
   if (!state.events) state.events = [];
   if (!state.memos) state.memos = [];
   if (!state.links) state.links = [];
+  if (!state.plans) state.plans = []; //優化地點用的陣列
   if (typeof state.dailyTribeCap !== "number") {
     state.dailyTribeCap = 12;
   }
@@ -261,7 +262,7 @@ function scheduleSave() {
     }
   }, 350);
 }
-
+//取得每日任務的key（例如：2023-08-15）
 function getDailyKey(now, resetHour) {
   const d = new Date(now);
   if (d.getHours() < resetHour) d.setDate(d.getDate() - 1);
@@ -273,6 +274,7 @@ function getNextDailyReset(now, resetHour) {
   if (d <= now) d.setDate(d.getDate() + 1);
   return d;
 }
+//取得每週任務的key（例如：2023-08-15，代表本週的週二）
 function getWeeklyKey(now, weekday, resetHour) {
   const cur = new Date(now);
   cur.setHours(resetHour, 0, 0, 0);
@@ -290,7 +292,7 @@ function getNextWeeklyReset(now, weekday, resetHour) {
   if (target <= now) target.setDate(target.getDate() + 7);
   return target;
 }
-
+//檢查每日/每週任務是否需要重置
 function checkResets() {
   const now = new Date();
   const dKey = getDailyKey(now, state.settings.dailyResetHour);
@@ -316,11 +318,11 @@ function checkResets() {
     renderAll();
   }
 }
-
+//檢查每日/每週任務是否需要重置（每分鐘檢查一次）
 function checkIcon() {
   return '<svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
-
+//確認每日任務清單是否已有完成
 function renderDaily() {
   const wrap = document.getElementById("daily-tasks");
   wrap.innerHTML = "";
@@ -406,6 +408,7 @@ function renderDaily() {
 }
 
 let tribeVersionFilter = "all";
+//友好部族清單
 function renderTribes() {
   const wrap = document.getElementById("tribe-blocks");
   wrap.innerHTML = "";
@@ -563,6 +566,7 @@ function renderWeeklyList(containerId, countId) {
   const countEl = document.getElementById(countId);
   if (countEl) countEl.textContent = `${done} / ${state.weeklyTasks.length}`;
 }
+//每週任務清單渲染（同一份資料，畫在兩個不同容器：每週任務頁 + 日常任務頁提醒）
 function renderWeekly() {
   renderWeeklyList("weekly-tasks", "weekly-count");
   renderWeeklyList("weekly-tasks-daily", "weekly-count-daily");
@@ -783,7 +787,7 @@ function renderMemoDailyReminder() {
     });
 
     if (editing) {
-      //編輯模式下，可改日期、標題、內文
+      //編輯模式下，備忘錄可改日期、標題、內文
       const dateInp = row.querySelector(".memo-edit-date");
       dateInp.addEventListener("input", () => {
         m.date = dateInp.value;
@@ -832,31 +836,6 @@ function renderMemoDailyReminder() {
 let linkEditing = {}; // id -> 是否在編輯模式
 let dragLinkId = null; // 目前正在拖曳的網站 id
 function renderLinks() {
-  // const list = document.getElementById("link-list");
-  // if (!list) return;
-  // list.innerHTML = "";
-  // if (state.links.length === 0) {
-  //   list.innerHTML = `<div class="empty-hint">還沒有收藏的網站，新增一筆開始收藏</div>`;
-  // } else {
-  //   state.links.forEach((l) => {
-  //     const row = document.createElement("div");
-  //     row.className = "memo-row-wrap";
-  //     row.innerHTML = `
-  //       <div class="memo-row">
-  //         <a href="${escapeAttr(l.url)}" target="_blank" rel="noopener" class="memo-text" style="color:var(--text-0);text-decoration:none;">${escapeHtml(l.name)}</a>
-  //         <button class="icon-btn del-link" aria-label="刪除">✕</button>
-  //       </div>
-  //     `;
-  //     row.querySelector(".del-link").addEventListener("click", () => {
-  //       if (!confirmDelete(`確定要刪除「${l.name}」這個網站嗎？`)) return;
-  //       state.links = state.links.filter((x) => x.id !== l.id);
-  //       scheduleSave();
-  //       renderLinks();
-  //     });
-  //     list.appendChild(row);
-  //   });
-  // }
-
   const list = document.getElementById("link-list");
   if (!list) return;
   list.innerHTML = "";
@@ -997,7 +976,8 @@ function importData(file) {
   };
   reader.readAsText(file);
 }
-
+//-----------------------
+//備份匯入匯出功能
 function setupBackup() {
   document
     .getElementById("export-data-btn")
@@ -1013,6 +993,286 @@ function setupBackup() {
     fileInp.value = "";
   });
 }
+//-----------------------
+//地點規劃（地點資料在 location.js：cityOrder、locations、types）
+let planGrouped = false; // 是否已按下「優化地點」
+let planEditing = {}; // 記錄哪些規劃目前在編輯模式（id -> true/false）
+
+//*更新
+// 依目前選的版本，算出「已開放的地區與地點」：{ 區域: [地點, ...] }
+function planUnlocked() {
+  const idx = Math.max(
+    0,
+    planVersions.findIndex((v) => v.label === state.planVersion),
+  );
+  const allowed = {}; // 區域 -> "all" 或 Set(地點)
+  for (let i = 0; i <= idx; i++) {
+    Object.entries(planVersions[i].unlocks).forEach(([city, spec]) => {
+      if (spec === "all") {
+        allowed[city] = "all";
+      } else if (allowed[city] !== "all") {
+        allowed[city] = new Set([...(allowed[city] || []), ...spec]);
+      }
+    });
+  }
+  const result = {};
+  Object.entries(allowed).forEach(([city, spec]) => {
+    const places = locations[city] || [];
+    result[city] = spec === "all" ? places : places.filter((p) => spec.has(p));
+  });
+  return result;
+}
+
+// 區域清單：只列有開放地點的區域，依 cityOrder 排序
+function planCities(unlocked) {
+  return Object.keys(unlocked)
+    .filter((c) => unlocked[c].length > 0)
+    .sort((a, b) => (cityOrder[a] ?? 999) - (cityOrder[b] ?? 999));
+}
+
+// 區域清單：依 cityOrder 排序（沒寫在 cityOrder 裡的區域排最後）
+// function planCities() {
+//   return Object.keys(locations).sort(
+//     (a, b) => (cityOrder[a] ?? 999) - (cityOrder[b] ?? 999),
+//   );
+// }
+
+// 地點在該區域陣列裡的位置（找不到排最後）
+function planPlaceIndex(p) {
+  const i = (locations[p.city] || []).indexOf(p.place);
+  return i === -1 ? 999 : i;
+}
+
+// 編輯用的選項：目前的值就算已經不在清單裡（例如降低了版本），也會保留，避免被默默改掉
+function optionsHtml(values, current) {
+  const list = values.includes(current) ? values : [...values, current];
+  return list
+    .map(
+      (v) =>
+        `<option value="${escapeAttr(v)}" ${v === current ? "selected" : ""}>${escapeHtml(v)}</option>`,
+    )
+    .join("");
+}
+// 重新整理「新增表單」的區域/地點選單（換版本時用），盡量維持原本的選擇
+function refreshPlanSelects() {
+  const citySel = document.getElementById("plan-city");
+  const placeSel = document.getElementById("plan-place");
+  const unlocked = planUnlocked();
+  const cities = planCities(unlocked);
+  const prevCity = citySel.value;
+  const prevPlace = placeSel.value;
+  fillSelect(citySel, cities);
+  if (cities.includes(prevCity)) citySel.value = prevCity;
+  const places = unlocked[citySel.value] || [];
+  fillSelect(placeSel, places);
+  if (places.includes(prevPlace)) placeSel.value = prevPlace;
+}
+//-----------------------
+
+function fillSelect(sel, values) {
+  sel.innerHTML = values
+    .map((v) => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`)
+    .join("");
+}
+
+function planRow(p, showPlace) {
+  const row = document.createElement("div");
+  row.className = "memo-row-wrap";
+
+  // 編輯模式
+  if (planEditing[p.id]) {
+    const unlocked = planUnlocked();
+    row.innerHTML = `
+      <div class="plan-edit-form">
+        <select class="plan-edit-city">${optionsHtml(planCities(unlocked), p.city)}</select>
+        <select class="plan-edit-place">${optionsHtml(unlocked[p.city] || [], p.place)}</select>
+        <select class="plan-edit-type">${optionsHtml(types, p.type)}</select>
+        <input class="plan-edit-text" value="${escapeAttr(p.text)}" placeholder="內容" />
+        <button class="reset-btn-sm plan-edit-save">完成</button>
+      </div>
+    `;
+    row.querySelector(".plan-edit-city").addEventListener("change", (e) => {
+      p.city = e.target.value;
+      const places = unlocked[p.city] || [];
+      if (places.length > 0) p.place = places[0]; // 換區域後，地點改成該區域第一個
+      scheduleSave();
+      renderPlans();
+    });
+    row.querySelector(".plan-edit-place").addEventListener("change", (e) => {
+      p.place = e.target.value;
+      scheduleSave();
+      renderPlans();
+    });
+    row.querySelector(".plan-edit-type").addEventListener("change", (e) => {
+      p.type = e.target.value;
+      scheduleSave();
+    });
+    row.querySelector(".plan-edit-text").addEventListener("input", (e) => {
+      p.text = e.target.value; // 打字時只存資料，不重畫（不然游標會跳掉）
+      scheduleSave();
+    });
+    row.querySelector(".plan-edit-save").addEventListener("click", () => {
+      // 內容被清空時，用類型補上；類型是「其他」就用「（未命名）」
+      if (!p.text.trim()) p.text = p.type !== "其他" ? p.type : "（未命名）";
+      planEditing[p.id] = false;
+      scheduleSave();
+      renderPlans();
+    });
+    return row;
+  }
+
+  // 一般顯示
+  row.innerHTML = `
+    <div class="memo-row${p.done ? " done" : ""}">
+      <div class="chk">${checkIcon()}</div>
+      <span class="plan-cat-tag">${escapeHtml(p.type)}</span>
+      <span class="memo-text">${escapeHtml(p.text)}</span>
+      ${showPlace ? `<span class="plan-loc-tag">${escapeHtml(p.city)} › ${escapeHtml(p.place)}</span>` : ""}
+      <button class="reset-btn-sm plan-edit-btn">編輯</button>
+      <button class="icon-btn del-plan" aria-label="刪除">✕</button>
+    </div>
+  `;
+  row.querySelector(".chk").addEventListener("click", () => {
+    p.done = !p.done;
+    scheduleSave();
+    renderPlans();
+  });
+  row.querySelector(".plan-edit-btn").addEventListener("click", () => {
+    planEditing[p.id] = true;
+    renderPlans();
+  });
+  row.querySelector(".del-plan").addEventListener("click", () => {
+    if (!confirmDelete(`確定要刪除「${p.text}」嗎？`)) return;
+    state.plans = state.plans.filter((x) => x.id !== p.id);
+    delete planEditing[p.id];
+    scheduleSave();
+    renderPlans();
+  });
+  return row;
+}
+
+function renderPlans() {
+  const list = document.getElementById("plan-list");
+  if (!list) return;
+  list.innerHTML = "";
+
+  const btn = document.getElementById("plan-optimize-btn");
+  if (btn) btn.textContent = planGrouped ? "取消分組" : "優化地點";
+  const countEl = document.getElementById("plan-count");
+  if (countEl)
+    countEl.textContent = `${state.plans.filter((p) => !p.done).length} 未完成`;
+
+  if (state.plans.length === 0) {
+    list.innerHTML = `<div class="empty-hint">還沒有規劃，先選好地點、加入要做的事</div>`;
+    return;
+  }
+
+  // 還沒按「優化地點」：照加入順序列出，每筆後面標示地點
+  if (!planGrouped) {
+    const group = document.createElement("div");
+    group.className = "plan-group";
+    state.plans.forEach((p) => group.appendChild(planRow(p, true)));
+    list.appendChild(group);
+    return;
+  }
+
+  // 按下「優化地點」：同一個地點放一組，組別依 區域順序 → 區域內地點順序 排列
+  const groups = new Map();
+  state.plans.forEach((p) => {
+    const key = `${p.city}||${p.place}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(p);
+  });
+  const sorted = [...groups.values()].sort((a, b) => {
+    const ca = cityOrder[a[0].city] ?? 999;
+    const cb = cityOrder[b[0].city] ?? 999;
+    if (ca !== cb) return ca - cb;
+    return planPlaceIndex(a[0]) - planPlaceIndex(b[0]);
+  });
+
+  sorted.forEach((items) => {
+    const remain = items.filter((p) => !p.done).length;
+    const block = document.createElement("div");
+    block.className = "version-block";
+    block.innerHTML = `<div class="version-title">${escapeHtml(items[0].city)} › ${escapeHtml(items[0].place)}　${remain > 0 ? `還剩 ${remain} 項` : "已完成"}</div>`;
+    const group = document.createElement("div");
+    group.className = "plan-group";
+    items.forEach((p) => group.appendChild(planRow(p, false)));
+    block.appendChild(group);
+    list.appendChild(block);
+  });
+}
+
+function setupPlan() {
+  const verSel = document.getElementById("plan-version");
+  const citySel = document.getElementById("plan-city");
+  const placeSel = document.getElementById("plan-place");
+  const typeSel = document.getElementById("plan-type");
+  const descInp = document.getElementById("plan-desc");
+
+  // 第一次使用（或存的版本已經不在清單裡）：預設是第一個版本
+  if (!planVersions.some((v) => v.label === state.planVersion)) {
+    state.planVersion = planVersions[0].label;
+    scheduleSave();
+  }
+  fillSelect(
+    verSel,
+    planVersions.map((v) => v.label),
+  );
+  verSel.value = state.planVersion;
+
+  // fillSelect(citySel, planCities());
+  // fillSelect(placeSel, locations[citySel.value] || []);
+  fillSelect(typeSel, types);
+  refreshPlanSelects();
+
+  // 換版本：重新算有哪些地區可選
+  verSel.addEventListener("change", () => {
+    state.planVersion = verSel.value;
+    scheduleSave();
+    refreshPlanSelects();
+    renderPlans();
+  });
+
+  // 第1版-換區域時，地點選單只列出該區域的地點
+  // citySel.addEventListener("change", () => {
+  //   fillSelect(placeSel, locations[citySel.value] || []);
+  // });
+
+  // 換區域時，地點選單只列出該區域「已開放」的地點
+  citySel.addEventListener("change", () => {
+    fillSelect(placeSel, planUnlocked()[citySel.value] || []);
+  });
+
+  function addPlan() {
+    const city = citySel.value;
+    const place = placeSel.value;
+    if (!city || !place) return;
+    const type = typeSel.value;
+    // 內容沒填時，用類型當內容；類型是「其他」就一定要填內容
+    const text = descInp.value.trim() || (type !== "其他" ? type : "");
+    if (!text) {
+      descInp.focus();
+      return;
+    }
+    state.plans.push({ id: uid(), city, place, type, text, done: false });
+    descInp.value = "";
+    scheduleSave();
+    renderPlans(); // 區域、地點、類型選單維持原選擇，方便連續新增同一地點的事情
+    descInp.focus();
+  }
+  document.getElementById("plan-add-btn").addEventListener("click", addPlan);
+  descInp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addPlan();
+  });
+
+  document.getElementById("plan-optimize-btn").addEventListener("click", () => {
+    planGrouped = !planGrouped;
+    renderPlans();
+  });
+}
+
+//-----------------------
 //確認是否刪除-對話框
 function confirmDelete(message) {
   return window.confirm(message || "確定要刪除嗎？這個動作無法復原。");
@@ -1033,11 +1293,14 @@ function renderTodayBanner() {
     banner.innerHTML = `<span class="label">今日活動</span><div class="items">${todays.map((e) => `<span class="pill">${escapeHtml(e.title)}</span>`).join("")}</div>`;
   }
 }
+//-----------------------
+//行事曆相關
 function isEventOnDay(e, key) {
   const isValidDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
   const end = e.endDate && isValidDate(e.endDate) ? e.endDate : e.date;
   return key >= e.date && key <= end;
 }
+//-----------------------
 //官方行事曆活動
 function eventLinkHtml(ev) {
   if (ev.url) {
@@ -1331,6 +1594,7 @@ function renderAll() {
   renderWeekly();
   renderMemos();
   renderLinks();
+  renderPlans(); //回傳優化地點
   renderTodayBanner();
   renderCalendar();
 }
@@ -1609,6 +1873,7 @@ function updateTime() {
   setInterval(updateTime, 1000);
   setInterval(updateCountdowns, 1000);
   setInterval(checkResets, 30000);
+  setupPlan(); // 地點優化-先放最後，萬一地點規劃出錯，才不會影響其他功能
 })();
 
 console.log(document.querySelector(".timer-chip.et"));
