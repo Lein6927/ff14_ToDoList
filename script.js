@@ -1093,6 +1093,7 @@ function planRow(p, showPlace) {
     `;
     row.querySelector(".plan-edit-city").addEventListener("change", (e) => {
       p.city = e.target.value;
+      if (planCityFilter !== "all") planCityFilter = p.city; // 篩選中換區域，畫面跟著這筆走
       const places = unlocked[p.city] || [];
       if (places.length > 0) p.place = places[0]; // 換區域後，地點改成該區域第一個
       scheduleSave();
@@ -1150,11 +1151,33 @@ function planRow(p, showPlace) {
   });
   return row;
 }
+//-----------------------
+//20261104 修正：新增「區域篩選」功能，方便只看某個區域的規劃
+let planCityFilter = "all"; // 優化地點後，目前篩選的區域（"all" = 全部）
+
+// 優化地點後的「區域篩選」按鈕（全部 + 目前有規劃的區域）
+function renderPlanCityPills(cities) {
+  const wrap = document.getElementById("plan-city-pills");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  ["all", ...cities].forEach((c) => {
+    const btn = document.createElement("button");
+    btn.className = "version-pill" + (planCityFilter === c ? " active" : "");
+    btn.textContent = c === "all" ? "全部" : c;
+    btn.addEventListener("click", () => {
+      planCityFilter = c;
+      renderPlans();
+    });
+    wrap.appendChild(btn);
+  });
+}
 
 function renderPlans() {
   const list = document.getElementById("plan-list");
   if (!list) return;
   list.innerHTML = "";
+  const pillsWrap = document.getElementById("plan-city-pills");
+  if (pillsWrap) pillsWrap.innerHTML = ""; // 沒按「優化地點」時，不顯示區域篩選
 
   const btn = document.getElementById("plan-optimize-btn");
   if (btn) btn.textContent = planGrouped ? "取消分組" : "優化地點";
@@ -1176,32 +1199,98 @@ function renderPlans() {
     return;
   }
 
-  // 按下「優化地點」：同一個地點放一組，組別依 區域順序 → 區域內地點順序 排列
-  const groups = new Map();
-  state.plans.forEach((p) => {
-    const key = `${p.city}||${p.place}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(p);
-  });
-  const sorted = [...groups.values()].sort((a, b) => {
-    const ca = cityOrder[a[0].city] ?? 999;
-    const cb = cityOrder[b[0].city] ?? 999;
-    if (ca !== cb) return ca - cb;
-    return planPlaceIndex(a[0]) - planPlaceIndex(b[0]);
-  });
+  // 按下「優化地點」：先依區域分開（區域之間有隔線），區域裡再依地點分組
+  const cities = [...new Set(state.plans.map((p) => p.city))].sort(
+    (a, b) => (cityOrder[a] ?? 999) - (cityOrder[b] ?? 999),
+  );
+  if (planCityFilter !== "all" && !cities.includes(planCityFilter)) {
+    planCityFilter = "all"; // 篩選的區域已經沒有任務了，回到全部
+  }
+  renderPlanCityPills(cities);
 
-  sorted.forEach((items) => {
-    const remain = items.filter((p) => !p.done).length;
-    const block = document.createElement("div");
-    block.className = "version-block";
-    block.innerHTML = `<div class="version-title">${escapeHtml(items[0].city)} › ${escapeHtml(items[0].place)}　${remain > 0 ? `還剩 ${remain} 項` : "已完成"}</div>`;
-    const group = document.createElement("div");
-    group.className = "plan-group";
-    items.forEach((p) => group.appendChild(planRow(p, false)));
-    block.appendChild(group);
-    list.appendChild(block);
+  const visibleCities = planCityFilter === "all" ? cities : [planCityFilter];
+  visibleCities.forEach((city) => {
+    const cityPlans = state.plans.filter((p) => p.city === city);
+    const cityRemain = cityPlans.filter((p) => !p.done).length;
+
+    const cityBlock = document.createElement("div");
+    cityBlock.className = "plan-city-block";
+    cityBlock.innerHTML = `<div class="plan-city-title"><span>${escapeHtml(city)}</span><span class="plan-remain">${cityRemain > 0 ? `還剩 ${cityRemain} 項` : "已完成"}</span></div>`;
+
+    // 同一個區域裡，依 locations 裡的順序，把同一個地點的事情放一組
+    const places = [...new Set(cityPlans.map((p) => p.place))].sort(
+      (a, b) =>
+        planPlaceIndex({ city, place: a }) - planPlaceIndex({ city, place: b }),
+    );
+    places.forEach((place) => {
+      const items = cityPlans.filter((p) => p.place === place);
+      const remain = items.filter((p) => !p.done).length;
+      const placeBlock = document.createElement("div");
+      placeBlock.className = "plan-place-block";
+      placeBlock.innerHTML = `<div class="plan-place-title"><span>${escapeHtml(place)}</span><span class="plan-remain">${remain > 0 ? `還剩 ${remain} 項` : "已完成"}</span></div>`;
+      const group = document.createElement("div");
+      group.className = "plan-group";
+      items.forEach((p) => group.appendChild(planRow(p, false)));
+      placeBlock.appendChild(group);
+      cityBlock.appendChild(placeBlock);
+    });
+    list.appendChild(cityBlock);
   });
 }
+//-----------------------
+
+//舊版
+// function renderPlans() {
+//   const list = document.getElementById("plan-list");
+//   if (!list) return;
+//   list.innerHTML = "";
+
+//   const btn = document.getElementById("plan-optimize-btn");
+//   if (btn) btn.textContent = planGrouped ? "取消分組" : "優化地點";
+//   const countEl = document.getElementById("plan-count");
+//   if (countEl)
+//     countEl.textContent = `${state.plans.filter((p) => !p.done).length} 未完成`;
+
+//   if (state.plans.length === 0) {
+//     list.innerHTML = `<div class="empty-hint">還沒有規劃，先選好地點、加入要做的事</div>`;
+//     return;
+//   }
+
+//   // 還沒按「優化地點」：照加入順序列出，每筆後面標示地點
+//   if (!planGrouped) {
+//     const group = document.createElement("div");
+//     group.className = "plan-group";
+//     state.plans.forEach((p) => group.appendChild(planRow(p, true)));
+//     list.appendChild(group);
+//     return;
+//   }
+
+//   // 按下「優化地點」：同一個地點放一組，組別依 區域順序 → 區域內地點順序 排列
+//   const groups = new Map();
+//   state.plans.forEach((p) => {
+//     const key = `${p.city}||${p.place}`;
+//     if (!groups.has(key)) groups.set(key, []);
+//     groups.get(key).push(p);
+//   });
+//   const sorted = [...groups.values()].sort((a, b) => {
+//     const ca = cityOrder[a[0].city] ?? 999;
+//     const cb = cityOrder[b[0].city] ?? 999;
+//     if (ca !== cb) return ca - cb;
+//     return planPlaceIndex(a[0]) - planPlaceIndex(b[0]);
+//   });
+
+//   sorted.forEach((items) => {
+//     const remain = items.filter((p) => !p.done).length;
+//     const block = document.createElement("div");
+//     block.className = "version-block";
+//     block.innerHTML = `<div class="version-title">${escapeHtml(items[0].city)} › ${escapeHtml(items[0].place)}　${remain > 0 ? `還剩 ${remain} 項` : "已完成"}</div>`;
+//     const group = document.createElement("div");
+//     group.className = "plan-group";
+//     items.forEach((p) => group.appendChild(planRow(p, false)));
+//     block.appendChild(group);
+//     list.appendChild(block);
+//   });
+// }
 
 function setupPlan() {
   const verSel = document.getElementById("plan-version");
@@ -1268,6 +1357,7 @@ function setupPlan() {
 
   document.getElementById("plan-optimize-btn").addEventListener("click", () => {
     planGrouped = !planGrouped;
+    if (planGrouped) planCityFilter = "all"; // 剛按下優化地點：預設顯示全部
     renderPlans();
   });
 }

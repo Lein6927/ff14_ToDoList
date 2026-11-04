@@ -88,4 +88,15 @@ const OFFICIAL_EVENTS = [
     textColor: "#ffffff",
     official: true,
   },
+  {
+    id: "off-1",
+    date: "2026-11-12",
+    endDate: "2026-12-03",
+    title: "FF16聯動",
+    url: "https://event.ffxiv.com.tw/2026/ffxvi/",
+    note: "「於烈焰焚燒的大地」\n沙都接取，可領「美堤亞套裝」、坐騎、寵物、幻卡、樂譜。\n角色須達到Lv50等，並完成主線任務「超越幻想，究級武器」後，才能接取任務。",
+    color: "#ca5d19",
+    textColor: "#ffffff",
+    official: true,
+  },
 ];
